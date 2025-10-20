@@ -1,6 +1,6 @@
 
 import json
-from auto_analysis import analyze_and_save
+from auto_analysis import analyze_stocks
 
 def main():
     """
@@ -22,7 +22,7 @@ def main():
             return
 
         print(f"Running analysis for tickers: {tickers} and benchmark: {benchmark_index}")
-        summary = analyze_and_save(tickers, benchmark_index)
+        summary = analyze_stocks(tickers, benchmark_index)
         print("\nAnalysis complete. Summary:")
         print(json.dumps(summary, indent=2, default=float))
 

@@ -1,5 +1,3 @@
-# stocks
-
 
 # 🧠 Daily Option Strategy Analyzer
 
@@ -30,12 +28,67 @@ This project fetches 5 years of historical stock data from Yahoo Finance, comput
 ```bash
 git clone https://github.com/your-username/daily-option-analysis.git
 cd daily-option-analysis
+```
 
+### 2. Install dependencies
+```bash
+pip install -r requirements.txt
+```
 
-## folder structure
+## 🏃‍♀️ How to Run
+
+There are two ways to run the analysis:
+
+### 1. Web Interface
+
+Run the Flask web server:
+
+```bash
+flask run
+# or
+python app.py
+```
+
+Then, open your web browser to `http://127.0.0.1:5000` to view the analysis results.
+
+### 2. Command Line
+
+Run the analysis script directly from the command line:
+
+```bash
+./run_analysis.sh
+# or
+python auto_analysis.py TICKER1,TICKER2 BENCHMARK
+```
+
+Example:
+```bash
+python auto_analysis.py 9988.HK,0005.HK ^HSI
+```
+
+## 📁 Folder Structure
+
+```
+├── app.py                    # Flask web server
 ├── auto_analysis.py          # Main Python script with full logic
 ├── run_analysis.sh           # Shell script to automate daily execution
 ├── requirements.txt          # Python dependencies
+├── vercel.json               # Vercel deployment configuration
+├── .vercelignore             # Vercel ignore file
 ├── README.md                 # Project overview and setup instructions
-├── data/                     # Folder for raw CSVs (auto-created)
-└── output/                   # Folder for plots and JSON summaries (auto-created)
+├── templates/                # HTML templates for the web interface
+│   ├── index.html
+│   └── error.html
+└── static/
+    └── output/               # Folder for plots and JSON summaries (auto-created)
+```
+
+## ⚙️ Configuration
+
+To change the stock tickers and benchmark index, edit the `config.py` file:
+
+```python
+# List your tickers here
+STOCK_TICKERS = ["AAPL", "GOOGL"]
+BENCHMARK_INDEX = "^GSPC"
+```

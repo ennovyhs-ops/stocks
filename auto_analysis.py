@@ -28,7 +28,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 # ---------- User config ----------
 STOCK_TICKERS = ["9988.HK", "0005.HK"]   # modify as needed, up to 3
 BENCHMARK_INDEX = "^HSI"                 # modify as needed
-DATA_DIR = "/tmp/data"
 OUT_DIR = "static/output"
 TIMEFRAMES = {"next_day":1, "2_weeks":10, "3_months":65, "6_months":130}
 STRIKE_STEP = 0.01     # two decimal places
@@ -194,7 +193,7 @@ def recommend_strikes(S, close_series, composite_score, timeframe_days, strike_s
         side='buy_spread'; target_delta=-np.mean(buyer_range); is_call=False
     else:
         side='sell_credit_or_neutral'; target_delta=np.mean(seller_range); is_call=True if composite_score>0 else False
-    abs_target = abs(target_delta)
+    abs_.target = abs(target_delta)
     K_target = strike_for_target_delta(S, abs_target, is_call if target_delta>0 else not is_call, r, q, sigma, T)
     K_rounded = float(np.round(np.round(K_target / strike_step) * strike_step, 2))
     K_atm = float(np.round(np.round(S / strike_step) * strike_step, 2))
@@ -260,7 +259,7 @@ def analyze_stocks(stock_tickers, benchmark_index):
 
 # ---------- CLI ----------
 def main():
-    ensure__dirs()
+    ensure_dirs()
     tickers = STOCK_TICKERS
     index = BENCHMARK_INDEX
     if len(sys.argv) > 1:
