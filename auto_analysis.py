@@ -27,8 +27,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 # ---------- User config ----------
 STOCK_TICKERS = ["9988.HK", "0005.HK"]   # modify as needed, up to 3
 BENCHMARK_INDEX = "^HSI"                 # modify as needed
-DATA_DIR = "data"
-OUT_DIR = "output"
+DATA_DIR = "/tmp/data"
+OUT_DIR = "/tmp/output"
 TIMEFRAMES = {"next_day":1, "2_weeks":10, "3_months":65, "6_months":130}
 STRIKE_STEP = 0.01     # two decimal places
 RISK_FREE_RATE = 0.02
