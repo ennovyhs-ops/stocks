@@ -1,8 +1,8 @@
+Flask
 yfinance
-pandas
+ta
 numpy
+pandas
 matplotlib
 seaborn
-ta
 scipy
-schedule
