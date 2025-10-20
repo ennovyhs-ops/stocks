@@ -14,6 +14,8 @@ import logging
 from datetime import datetime
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import yfinance as yf
@@ -43,7 +45,6 @@ DEFAULT_WEIGHTS = {
 
 # ---------- Utilities ----------
 def ensure_dirs():
-    os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(OUT_DIR, exist_ok=True)
 
 def fetch_5y(ticker):
@@ -52,9 +53,6 @@ def fetch_5y(ticker):
     if df.empty:
         raise RuntimeError(f"No data for {ticker}")
     df = df.reset_index()[['Date','Open','High','Low','Close','Volume','Adj Close']]
-    fn = os.path.join(DATA_DIR, f"{ticker.replace('^','_')}_5y.csv")
-    df.to_csv(fn, index=False)
-    logging.info(f"Saved {fn}")
     return df
 
 def vwma(price, vol, window):
@@ -232,7 +230,7 @@ def plot_analysis(df, summary, ticker):
     return outfn
 
 # ---------- Orchestration ----------
-def analyze_and_save(stock_tickers, benchmark_index):
+def analyze_stocks(stock_tickers, benchmark_index):
     ensure_dirs()
     # Fetch data
     all_dfs = {}
@@ -259,11 +257,6 @@ def analyze_and_save(stock_tickers, benchmark_index):
         plotfile = plot_analysis(stk, {k: {'score': v['score']} for k, v in stock_summary.items()}, t)
         stock_summary['plot'] = plotfile
         summary[t] = stock_summary
-    # Save JSON summary
-    outfn = os.path.join(OUT_DIR, f"analysis_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    with open(outfn, "w") as f:
-        json.dump(summary, f, indent=2, default=float)
-    logging.info(f"Saved summary {outfn}")
     return summary
 
 # ---------- CLI ----------
@@ -275,7 +268,7 @@ def main():
         tickers = sys.argv[1].split(",")
     if len(sys.argv) > 2:
         index = sys.argv[2]
-    summary = analyze_and_save(tickers, index)
+    summary = analyze_stocks(tickers, index)
     print(json.dumps(summary, indent=2, default=float))
 
 if __name__ == "__main__":

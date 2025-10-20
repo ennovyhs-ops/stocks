@@ -1,7 +1,7 @@
 
 import json
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
-from auto_analysis import analyze_and_save
+from auto_analysis import analyze_stocks
 import os
 
 app = Flask(__name__)
@@ -25,7 +25,7 @@ def analyze():
     ticker_list = [t.strip() for t in tickers.split(',')]
     
     try:
-        summary = analyze_and_save(ticker_list, benchmark)
+        summary = analyze_stocks(ticker_list, benchmark)
         # Assuming the first ticker is the one we want to show the plot for
         main_ticker = ticker_list[0]
         plot_file = summary.get(main_ticker, {}).get('plot')
