@@ -17,20 +17,19 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
 import yfinance as yf
 import ta
 from scipy.stats import norm
 from scipy.optimize import brentq
 
-sns.set(style="darkgrid")
+plt.style.use('dark_background')
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # ---------- User config ----------
 STOCK_TICKERS = ["9988.HK", "0005.HK"]   # modify as needed, up to 3
 BENCHMARK_INDEX = "^HSI"                 # modify as needed
 DATA_DIR = "/tmp/data"
-OUT_DIR = "/tmp/output"
+OUT_DIR = "static/output"
 TIMEFRAMES = {"next_day":1, "2_weeks":10, "3_months":65, "6_months":130}
 STRIKE_STEP = 0.01     # two decimal places
 RISK_FREE_RATE = 0.02
@@ -261,7 +260,7 @@ def analyze_stocks(stock_tickers, benchmark_index):
 
 # ---------- CLI ----------
 def main():
-    ensure_dirs()
+    ensure__dirs()
     tickers = STOCK_TICKERS
     index = BENCHMARK_INDEX
     if len(sys.argv) > 1:

@@ -3,6 +3,5 @@ yfinance
 ta
 numpy
 pandas
-matplotlib
-seaborn
+matplotlib-base
 scipy

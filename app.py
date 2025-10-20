@@ -7,8 +7,8 @@ import os
 app = Flask(__name__)
 
 # Ensure the output directory exists
-if not os.path.exists('/tmp/output'):
-    os.makedirs('/tmp/output')
+if not os.path.exists('static/output'):
+    os.makedirs('static/output')
 
 @app.route('/')
 def index():
@@ -34,10 +34,9 @@ def analyze():
     except Exception as e:
         return render_template('error.html', error=str(e))
 
-@app.route('/tmp/output/<filename>')
+@app.route('/static/output/<filename>')
 def output_file(filename):
-    return send_from_directory('/tmp/output', filename)
+    return send_from_directory('static/output', filename)
 
 if __name__ == "__main__":
     app.run(debug=True)
-
