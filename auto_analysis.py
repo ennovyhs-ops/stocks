@@ -13,16 +13,12 @@ import json
 import logging
 from datetime import datetime
 import numpy as np
-import pandas as pd
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+import polars as pl
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import yfinance as yf
-import ta
-from scipy.stats import norm
-from scipy.optimize import brentq
-
-plt.style.use('dark_background')
+import numpy_financial as npf  # Smaller than scipy for financial calcs
+from math import erf, sqrt  # Use math module instead of scipy.stats
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # ---------- User config ----------
@@ -53,37 +49,183 @@ def fetch_5y(ticker):
     df = df.reset_index()[['Date','Open','High','Low','Close','Volume','Adj Close']]
     return df
 
+# Minimal technical analysis implementations
+def rsi(close, window=14):
+    delta = np.diff(close)
+    gains = np.where(delta > 0, delta, 0)
+    losses = np.where(delta < 0, -delta, 0)
+    avg_gain = np.convolve(gains, np.ones(window)/window, mode='valid')
+    avg_loss = np.convolve(losses, np.ones(window)/window, mode='valid')
+    rs = avg_gain / np.maximum(avg_loss, 1e-9)  # Avoid div by zero
+    return 100 - (100 / (1 + rs))
+
+def macd(close, fast=12, slow=26, signal=9):
+    exp1 = np.exp(-np.arange(fast)[::-1]/fast)
+    exp2 = np.exp(-np.arange(slow)[::-1]/slow)
+    exp3 = np.exp(-np.arange(signal)[::-1]/signal)
+    # Normalize weights
+    exp1 = exp1 / exp1.sum()
+    exp2 = exp2 / exp2.sum()
+    exp3 = exp3 / exp3.sum()
+    # Calculate EMAs
+    ema12 = np.convolve(close, exp1, mode='valid')
+    ema26 = np.convolve(close, exp2, mode='valid')
+    # Calculate MACD line
+    macd_line = ema12[-len(ema26):] - ema26
+    # Calculate signal line
+    signal_line = np.convolve(macd_line, exp3, mode='valid')
+    return macd_line[-len(signal_line):], signal_line
+
 def vwma(price, vol, window):
-    pv = (price * vol).rolling(window=window, min_periods=1).sum()
-    v = vol.rolling(window=window, min_periods=1).sum().replace(0, np.nan)
-    return pv / v
+    # Use numpy's rolling window view for better memory efficiency
+    def rolling_sum(x, w):
+        if len(x) < w:
+            return np.array([])
+        shape = (x.shape[:-1] + (x.shape[-1] - w + 1, w))
+        strides = x.strides + (x.strides[-1],)
+        return np.sum(np.lib.stride_tricks.as_strided(x, shape=shape, strides=strides), -1)
+    
+    pv = price * vol
+    pv_sum = rolling_sum(pv, window)
+    v_sum = rolling_sum(vol, window)
+    v_sum = np.where(v_sum == 0, np.nan, v_sum)  # Avoid div by zero
+    return pv_sum / v_sum
 
 def compute_indicators(df):
-    out = df.copy().sort_values('Date').reset_index(drop=True)
-    out['SMA200'] = out['Close'].rolling(window=200, min_periods=1).mean()
-    out['VWMA20'] = vwma(out['Close'], out['Volume'], 20)
-    out['VWMA50'] = vwma(out['Close'], out['Volume'], 50)
-    out['BB_mid'] = out['Close'].rolling(window=20, min_periods=1).mean()
-    out['BB_std'] = out['Close'].rolling(window=20, min_periods=1).std()
-    out['BB_upper'] = out['BB_mid'] + 2 * out['BB_std']
-    out['BB_lower'] = out['BB_mid'] - 2 * out['BB_std']
-    out['RSI'] = ta.momentum.RSIIndicator(out['Close'], window=14).rsi()
-    macd = ta.trend.MACD(out['Close'], window_slow=26, window_fast=12, window_sign=9)
-    out['MACD'] = macd.macd()
-    out['MACD_signal'] = macd.macd_signal()
-    out['MACD_hist'] = out['MACD'] - out['MACD_signal']
-    out['Vol20'] = out['Volume'].rolling(window=20, min_periods=1).mean()
-    tp = (out['High'] + out['Low'] + out['Close']) / 3.0
-    pv = (tp * out['Volume']).rolling(window=20, min_periods=1).sum()
-    v = out['Volume'].rolling(window=20, min_periods=1).sum().replace(0, np.nan)
-    out['VWAP20'] = pv / v
-    return out
+    # Convert DataFrame to numpy arrays for efficient computation
+    dates = df['Date'].values
+    close = df['Close'].values
+    volume = df['Volume'].values
+    high = df['High'].values
+    low = df['Low'].values
+    
+    # Calculate indicators using numpy operations
+    sma200 = np.convolve(close, np.ones(200)/200, mode='valid')
+    sma200 = np.pad(sma200, (200-1, 0), mode='edge')  # Pad start
+    
+    vwma20 = vwma(close, volume, 20)
+    vwma20 = np.pad(vwma20, (20-1, 0), mode='edge')
+    
+    vwma50 = vwma(close, volume, 50)
+    vwma50 = np.pad(vwma50, (50-1, 0), mode='edge')
+    
+    # Bollinger Bands
+    bb_window = 20
+    bb_std = np.zeros_like(close)
+    bb_mid = np.zeros_like(close)
+    for i in range(bb_window-1, len(close)):
+        window = close[i-bb_window+1:i+1]
+        bb_mid[i] = window.mean()
+        bb_std[i] = window.std()
+    bb_upper = bb_mid + 2 * bb_std
+    bb_lower = bb_mid - 2 * bb_std
+    
+    # RSI and MACD
+    rsi_vals = rsi(close)
+    rsi_vals = np.pad(rsi_vals, (14, 0), mode='edge')
+    
+    macd_line, signal_line = macd(close)
+    macd_hist = macd_line - signal_line
+    pad_size = len(close) - len(macd_line)
+    macd_line = np.pad(macd_line, (pad_size, 0), mode='edge')
+    signal_line = np.pad(signal_line, (pad_size, 0), mode='edge')
+    macd_hist = np.pad(macd_hist, (pad_size, 0), mode='edge')
+    
+    # Volume
+    vol20 = np.convolve(volume, np.ones(20)/20, mode='valid')
+    vol20 = np.pad(vol20, (20-1, 0), mode='edge')
+    
+    # VWAP
+    tp = (high + low + close) / 3.0
+    vwap20 = vwma(tp, volume, 20)
+    vwap20 = np.pad(vwap20, (20-1, 0), mode='edge')
+    
+    # Create polars DataFrame
+    return pl.DataFrame({
+        'Date': dates,
+        'Close': close,
+        'Volume': volume,
+        'SMA200': sma200,
+        'VWMA20': vwma20,
+        'VWMA50': vwma50,
+        'BB_mid': bb_mid,
+        'BB_upper': bb_upper,
+        'BB_lower': bb_lower,
+        'RSI': rsi_vals,
+        'MACD': macd_line,
+        'MACD_signal': signal_line,
+        'MACD_hist': macd_hist,
+        'Vol20': vol20,
+        'VWAP20': vwap20
+    })
+
+# Stats utilities
+def norm_cdf(x):
+    # Approximate normal CDF using error function
+    return 0.5 * (1 + erf(x / sqrt(2)))
+
+def norm_ppf(p):
+    # Approximate inverse normal CDF (percent point function)
+    # Using Acklam's algorithm
+    a1 = -3.969683028665376e+01
+    a2 = 2.209460984245205e+02
+    a3 = -2.759285104469687e+02
+    a4 = 1.383577518672690e+02
+    a5 = -3.066479806614716e+01
+    a6 = 2.506628277459239e+00
+    
+    b1 = -5.447609879822406e+01
+    b2 = 1.615858368580409e+02
+    b3 = -1.556989798598866e+02
+    b4 = 6.680131188771972e+01
+    b5 = -1.328068155288572e+01
+    
+    c1 = -7.784894002430293e-03
+    c2 = -3.223964580411365e-01
+    c3 = -2.400758277161838e+00
+    c4 = -2.549732539343734e+00
+    c5 = 4.374664141464968e+00
+    c6 = 2.938163982698783e+00
+    
+    d1 = 7.784695709041462e-03
+    d2 = 3.224671290700398e-01
+    d3 = 2.445134137142996e+00
+    d4 = 3.754408661907416e+00
+    
+    p_low = 0.02425
+    p_high = 1 - p_low
+    
+    if p_low <= p <= p_high:
+        q = p - 0.5
+        r = q * q
+        x = (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q / \
+            (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1)
+    else:
+        if p < p_low:
+            q = sqrt(-2 * np.log(p))
+            x = (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) / \
+                ((((d1 * q + d2) * q + d3) * q + d4) * q + 1)
+        else:
+            q = sqrt(-2 * np.log(1 - p))
+            x = -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) / \
+                ((((d1 * q + d2) * q + d3) * q + d4) * q + 1)
+    return x
 
 def compute_rsr(stock_df, index_df):
-    merged = pd.merge(stock_df[['Date','Close']], index_df[['Date','Close']], on='Date', how='left', suffixes=('_stk','_idx'))
-    merged['RSR'] = merged['Close_stk'] / merged['Close_idx']
-    merged['RSR'] = merged['RSR'].fillna(method='ffill')
-    return merged[['Date','RSR']]
+    # Join using polars
+    stock_df = pl.DataFrame({
+        'Date': stock_df['Date'],
+        'Close_stk': stock_df['Close']
+    })
+    index_df = pl.DataFrame({
+        'Date': index_df['Date'],
+        'Close_idx': index_df['Close']
+    })
+    merged = stock_df.join(index_df, on='Date', how='left')
+    rsr = merged.with_columns([
+        (pl.col('Close_stk') / pl.col('Close_idx')).alias('RSR')
+    ])
+    return rsr.select(['Date', 'RSR']).fill_null(strategy='forward')
 
 # ---------- Scoring ----------
 def score_window_weighted(df, rsr_df, days, weights):
@@ -204,27 +346,52 @@ def recommend_strikes(S, close_series, composite_score, timeframe_days, strike_s
 def plot_analysis(df, summary, ticker):
     df = df.sort_values('Date').reset_index(drop=True)
     window = df.tail(130).copy()
-    fig, axes = plt.subplots(4,1, figsize=(14,12), sharex=True, gridspec_kw={'height_ratios':[3,1,1,0.8]})
-    ax_price, ax_rsi, ax_macd, ax_vol = axes
-    ax_price.plot(window['Date'], window['Close'], label='Close', color='black')
-    ax_price.plot(window['Date'], window['VWMA50'], label='VWMA50', color='blue', linewidth=0.9)
-    ax_price.plot(window['Date'], window['VWMA20'], label='VWMA20', color='cyan', linewidth=0.8)
-    ax_price.fill_between(window['Date'], window['BB_lower'], window['BB_upper'], color='gray', alpha=0.12)
-    ax_price.set_title(f"{ticker} Price with VWMA and Bollinger Bands")
-    ax_rsi.plot(window['Date'], window['RSI'], label='RSI(14)', color='purple')
-    ax_rsi.axhline(70, color='red', linestyle='--'); ax_rsi.axhline(30, color='green', linestyle='--')
-    ax_macd.plot(window['Date'], window['MACD'], label='MACD', color='green')
-    ax_macd.plot(window['Date'], window['MACD_signal'], label='Signal', color='red', linewidth=0.8)
-    ax_macd.bar(window['Date'], window['MACD_hist'], label='MACD hist', color='gray', alpha=0.7)
-    ax_vol.bar(window['Date'], window['Volume'], color='tab:blue', alpha=0.6)
-    ax_vol.plot(window['Date'], window['Vol20'], color='red', linewidth=0.9)
-    ann = '\n'.join([f"{k}: {v['score']:.2f}" for k,v in summary.items()])
-    ax_price.text(0.01, 0.98, ann, transform=ax_price.transAxes, fontsize=10, verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    ax_price.legend(loc='upper left')
-    plt.tight_layout()
-    outfn = os.path.join(OUT_DIR, f"{ticker.replace('^','_')}_analysis.png")
-    fig.savefig(outfn)
-    plt.close(fig)
+    
+    # Create figure with secondary y-axis
+    fig = make_subplots(rows=4, cols=1, 
+                       row_heights=[0.4, 0.2, 0.2, 0.2],
+                       shared_xaxes=True,
+                       vertical_spacing=0.02)
+    
+    # Price and indicators
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['Close'], name='Close', line=dict(color='white')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['VWMA50'], name='VWMA50', line=dict(color='blue')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['VWMA20'], name='VWMA20', line=dict(color='cyan')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['BB_upper'], name='BB', line=dict(color='gray'), showlegend=False), row=1, col=1)
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['BB_lower'], fill='tonexty', fillcolor='rgba(128,128,128,0.1)', 
+                            line=dict(color='gray'), showlegend=False), row=1, col=1)
+    
+    # RSI
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['RSI'], name='RSI(14)', line=dict(color='purple')), row=2, col=1)
+    fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
+    fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
+    
+    # MACD
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['MACD'], name='MACD', line=dict(color='green')), row=3, col=1)
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['MACD_signal'], name='Signal', line=dict(color='red')), row=3, col=1)
+    fig.add_trace(go.Bar(x=window['Date'], y=window['MACD_hist'], name='MACD hist', marker_color='gray'), row=3, col=1)
+    
+    # Volume
+    fig.add_trace(go.Bar(x=window['Date'], y=window['Volume'], name='Volume', marker_color='rgba(0,0,255,0.6)'), row=4, col=1)
+    fig.add_trace(go.Scatter(x=window['Date'], y=window['Vol20'], name='Vol20', line=dict(color='red')), row=4, col=1)
+    
+    # Add scores annotation
+    ann = '<br>'.join([f"{k}: {v['score']:.2f}" for k,v in summary.items()])
+    fig.add_annotation(text=ann, xref="paper", yref="paper", x=0.01, y=0.99, showarrow=False,
+                      font=dict(size=10), bgcolor="rgba(255,255,255,0.8)", bordercolor="black", borderwidth=1)
+    
+    # Update layout
+    fig.update_layout(
+        title=f"{ticker} Price with VWMA and Bollinger Bands",
+        template="plotly_dark",
+        showlegend=True,
+        height=800,
+        margin=dict(t=30, l=10, r=10, b=10)
+    )
+    
+    # Save as HTML (interactive) instead of PNG
+    outfn = os.path.join(OUT_DIR, f"{ticker.replace('^','_')}_analysis.html")
+    fig.write_html(outfn)
     return outfn
 
 # ---------- Orchestration ----------

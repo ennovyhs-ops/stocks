@@ -22,9 +22,9 @@
     <h2>Summary</h2>
     <pre>{{ summary }}</pre>
 
-    {% if plot_file %}
-        <h2>Chart</h2>
-        <img src="{{ url_for('output_file', filename=plot_file.split('/')[-1]) }}" alt="Analysis Chart">
+    {% if plot_html %}
+        <h2>Interactive Chart</h2>
+        {{ plot_html | safe }}
     {% endif %}
 
     <br><br>
