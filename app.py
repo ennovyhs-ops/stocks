@@ -38,5 +38,10 @@ def analyze():
 def output_file(filename):
     return send_from_directory('static/output', filename)
 
+def create_app():
+    # Factory for WSGI servers if needed in future
+    return app
+
 if __name__ == "__main__":
+    # Local development server
     app.run(debug=True)

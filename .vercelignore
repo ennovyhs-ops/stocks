@@ -1,3 +1,19 @@
+# Ignore virtual environments and common local files
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+analysis_log.txt
+static/output/
+build/
+dist/
+node_modules/
+/.git
 
 # Ignore virtualenv
 .venv
