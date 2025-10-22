@@ -1,36 +1,42 @@
 import json
 import asyncio
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request
 from auto_analysis import analyze_stocks
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if request.method == 'POST':
+        tickers = request.form.get('tickers')
+        benchmark = request.form.get('benchmark')
 
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    tickers = request.form.get('tickers')
-    benchmark = request.form.get('benchmark')
+        if not tickers or not benchmark:
+            return render_template('index.html', error="Please provide tickers and a benchmark.")
 
-    if not tickers or not benchmark:
-        return redirect(url_for('index'))
+        ticker_list = [t.strip() for t in tickers.split(',')]
+        if len(ticker_list) > 3:
+            return render_template('index.html', error="You can analyze up to 3 stocks at a time.", tickers=tickers, benchmark=benchmark)
 
-    ticker_list = [t.strip() for t in tickers.split(',')]
+        try:
+            summary = asyncio.run(analyze_stocks(ticker_list, benchmark))
+            
+            rendered_summary = {}
+            for ticker, analysis in summary.items():
+                plot_html = analysis.pop('plot', '')
+                rendered_summary[ticker] = {
+                    'summary': json.dumps(analysis, indent=2, default=float),
+                    'plot': plot_html
+                }
+
+            return render_template('index.html', 
+                                 results=rendered_summary,
+                                 tickers=tickers,
+                                 benchmark=benchmark)
+        except Exception as e:
+            return render_template('error.html', error=str(e))
     
-    try:
-        # Since analyze_stocks is now async, we need to run it in an event loop
-        summary = asyncio.run(analyze_stocks(ticker_list, benchmark))
-        # Assuming the first ticker is the one we want to show the plot for
-        main_ticker = ticker_list[0]
-        plot_html = summary.get(main_ticker, {}).get('plot')
-        
-        return render_template('results.html', 
-                             summary=json.dumps(summary, indent=2, default=float),
-                             plot_html=plot_html)
-    except Exception as e:
-        return render_template('error.html', error=str(e))
+    return render_template('index.html')
 
 def create_app():
     # Factory for WSGI servers if needed in future

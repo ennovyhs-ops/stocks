@@ -10,16 +10,42 @@
             font-family: sans-serif;
             margin: 2em;
         }
+        .results {
+            margin-top: 2em;
+        }
+        .plot {
+            margin-top: 1em;
+        }
     </style>
 </head>
 <body>
-    <h1>Stock Analysis</h1>
-    <form action="/analyze" method="post">
-        <label for="tickers">Stock Tickers (comma-separated):</label><br>
-        <input type.text" id="tickers" name="tickers" size="50"><br><br>
+    <h1>Daily Option Strategy Analyzer</h1>
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+    <form action="/" method="post">
+        <label for="tickers">Stock Tickers (comma-separated, up to 3):</label><br>
+        <input type="text" id="tickers" name="tickers" size="50" value="{{ tickers or '''' }}"><br><br>
         <label for="benchmark">Benchmark Index:</label><br>
-        <input type="text" id="benchmark" name="benchmark" size="20"><br><br>
+        <input type="text" id="benchmark" name="benchmark" size="20" value="{{ benchmark or '''' }}"><br><br>
         <input type="submit" value="Run Analysis">
     </form>
+
+    {% if results %}
+        <div class="results">
+            <h2>Analysis Results</h2>
+            {% for ticker, result in results.items() %}
+                <h3>{{ ticker }}</h3>
+                <div class="summary">
+                    <h4>Summary</h4>
+                    <pre>{{ result.summary }}</pre>
+                </div>
+                <div class="plot">
+                    <h4>Plot</h4>
+                    {{ result.plot|safe }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 </body>
 </html>

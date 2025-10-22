@@ -4,7 +4,7 @@ This project is a comprehensive tool for analyzing stock and option data to gene
 
 ## Key Features
 
-- **Data Fetching:** Fetches 2 years of historical daily OHLCV (Open, High, Low, Close, Volume) real live data for up to 3 stocks and 1 benchmark index from Yahoo Finance (https://finance.yahoo.com/quote/...), selected stocks and index to be input by user at interface page.
+- **Data Fetching:** Fetches 3 years of historical daily OHLCV (Open, High, Low, Close, Volume) real live data for up to 3 stocks and 1 benchmark index from Yahoo Finance (https://finance.yahoo.com/quote/...), selected stocks and index to be input by user at interface page.
 - **Technical Analysis:** Computes a wide range of technical indicators, including:
     - VWMA (Volume Weighted Moving Average) (20 and 50-day)
     - Bollinger Bands (20-day with 2 standard deviations)
