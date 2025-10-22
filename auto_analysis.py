@@ -19,6 +19,7 @@ from plotly.subplots import make_subplots
 import yfinance as yf
 import numpy_financial as npf  # Smaller than scipy for financial calcs
 from math import erf, sqrt  # Use math module instead of scipy.stats
+from scipy.optimize import brentq
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # ---------- User config ----------
@@ -300,13 +301,13 @@ def call_delta_bs(S, K, r, q, sigma, T):
     if T <= 0 or sigma <= 0:
         return 1.0 if S > K else 0.0
     d1 = bs_d1(S, K, r, q, sigma, T)
-    return np.exp(-q * T) * norm.cdf(d1)
+    return np.exp(-q * T) * norm_cdf(d1)
 
 def put_delta_bs(S, K, r, q, sigma, T):
     if T <= 0 or sigma <= 0:
         return -1.0 if S < K else 0.0
     d1 = bs_d1(S, K, r, q, sigma, T)
-    return np.exp(-q * T) * (norm.cdf(d1) - 1)
+    return np.exp(-q * T) * (norm_cdf(d1) - 1)
 
 def strike_for_target_delta(S, target_delta, is_call, r, q, sigma, T):
     def f(K):
@@ -335,7 +336,7 @@ def recommend_strikes(S, close_series, composite_score, timeframe_days, strike_s
         side='buy_spread'; target_delta=-np.mean(buyer_range); is_call=False
     else:
         side='sell_credit_or_neutral'; target_delta=np.mean(seller_range); is_call=True if composite_score>0 else False
-    abs_.target = abs(target_delta)
+    abs_target = abs(target_delta)
     K_target = strike_for_target_delta(S, abs_target, is_call if target_delta>0 else not is_call, r, q, sigma, T)
     K_rounded = float(np.round(np.round(K_target / strike_step) * strike_step, 2))
     K_atm = float(np.round(np.round(S / strike_step) * strike_step, 2))

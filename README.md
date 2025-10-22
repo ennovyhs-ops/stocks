@@ -20,7 +20,7 @@ This project is a comprehensive tool for analyzing stock and option data to gene
 - **Option Strike Recommendations:** Recommends option strike prices using a delta-based Black-Scholes inversion model.
 - **Output Generation:** Saves the analysis results in multiple formats:
     - CSV files of the raw data
-    - PNG plots of the technical analysis
+    - HTML plots of the technical analysis
     - JSON summary of the scores and strike recommendations
 
 ## Technologies Used
@@ -29,8 +29,10 @@ This project is a comprehensive tool for analyzing stock and option data to gene
 - **Flask:** A lightweight web framework for creating the web interface.
 - **yfinance:** A Python library for fetching historical market data from Yahoo Finance.
 - **pandas:** A powerful library for data manipulation and analysis.
-- **Matplotlib:** A library for creating static, animated, and interactive visualizations in Python.
-- **TA-Lib:** A widely used library for technical analysis of financial market data.
+- **polars:** A fast DataFrame library for in-memory analytics.
+- **numpy:** A fundamental package for scientific computing with Python.
+- **scipy:** A Python-based ecosystem of open-source software for mathematics, science, and engineering.
+- **plotly:** A graphing library for creating interactive, publication-quality graphs.
 
 ## Installation
 
