@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Analysis Results</title>
+</head>
+<body>
+    <h1>Stock Analysis Results</h1>
+    <div>Updated: {{ timestamp }}</div>
+    {% for ticker, data in results.items() %}
+        <div>
+            <h2>{{ ticker }} &mdash; {{ data.latest }}</h2>
+            <img src="{{ data.chart }}" style="max-width:100%">
+            <pre>{{ data.summary | tojson(indent=2) }}</pre>
+        </div>
+    {% endfor %}
+    <a href="/">Run another analysis</a>
+</body>
+</html>

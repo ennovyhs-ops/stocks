@@ -1,18 +1,13 @@
 ## Daily Option Strategy Analyzer
-This project is a compact web app that fetches 2 years of daily OHLCV data for up to 3 stocks and one benchmark index from Yahoo Finance, computes core technical indicators, scores multiple timeframes, and provides delta-based option strike recommendations. The app returns results on-demand without storing outputs.
+This project is a compact web app that fetches 3 years of daily OHLCV data for up to 3 stocks and one benchmark index from Yahoo Finance, computes core technical indicators, scores multiple timeframes, and provides delta-based option strike recommendations. The app returns results on-demand without storing outputs.
 
 ## Key Features
-Fetches 2 years of daily data from Yahoo Finance.
-
-Computes VWMA(20,50), Bollinger Bands(20,2), RSI(14), MACD(12,26,9), VWAP(20), 20-day average volume.
-
-Produces composite scores for Next Day, 2 Weeks, 3 Months, 6 Months.
-
-Recommends option strikes (call/put, long/short, conservative ATM reference) using delta inversion.
-
-Provides a simple web interface to enter tickers and view results immediately.
-
-Does not store analysis results persistently.
+- Fetches 3 years of daily data from Yahoo Finance.
+- Computes VWMA(20,50), Bollinger Bands(20,2), RSI(14), MACD(12,26,9), VWAP(20), 20-day average volume.
+- Produces composite scores for Next Day, 2 Weeks, 3 Months, 6 Months.
+- Recommends option strikes (call/put, long/short, conservative ATM reference) using delta inversion.
+- Provides a simple web interface to enter tickers and view results immediately.
+- Does not store analysis results persistently.
 
 ## Quick start (local)
 Clone the repo: 
@@ -20,9 +15,9 @@ git clone https://github.com/ennovyhs-ops/stocks.git
 cd stocks
 
 Create a virtual environment and install: 
-python3 -m venv venv 
-source venv/bin/activate 
-pip install -r requirements.txt
+- python3 -m venv venv 
+- source venv/bin/activate 
+- pip install -r requirements.txt
 
 Run: 
 ./run_analysis.sh
@@ -37,12 +32,6 @@ Click Analyze to fetch live data and compute results.
 
 The page displays charts and a JSON summary of component scores and recommended option plays.
 
-## Deployment notes
-Render, Railway, or Fly.io provide free tiers suitable for running this Python app and providing a public URL.
-
-Vercel is optimized for Node.js and static sites and is not recommended for Python server endpoints in free plans.
-
-For lightweight, zero-storage deployments consider running the app on a small VPS or free cloud service and enabling HTTPS.
 
 ## Security and limits
 The app relies on Yahoo Finance via yfinance; heavy repeated usage may be rate-limited.
