@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Config Editor</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width:900px; margin:2rem auto; padding:1rem; }
+    label { font-weight:700; display:block; margin-top:0.75rem; }
+    input[type="text"], input[type="number"], select, textarea {
+      width:100%; padding:0.5rem; margin-top:0.25rem; box-sizing:border-box;
+    }
+    .tickers { display:flex; gap:8px; margin-top:0.5rem; }
+    .tickers input { flex:1; }
+    .row { display:flex; gap:8px; align-items:center; }
+    .btn { padding:0.5rem 0.75rem; cursor:pointer; border:1px solid #ccc; background:#f6f6f6; }
+    .btn.primary { background:#0366d6; color:#fff; border-color:#0366d6; }
+    .status { margin-top:0.75rem; color:#1b6; }
+    pre { background:#fafafa; padding:0.75rem; overflow:auto; border:1px solid #eee; }
+  </style>
+</head>
+<body>
+  <h1>Config Editor</h1>
+
+  <div>
+    <label>Stocks (up to 3)</label>
+    <div class="tickers">
+      <input id="t0" type="text" placeholder="Ticker 1 (e.g. 0005.HK)">
+      <input id="t1" type="text" placeholder="Ticker 2 (optional)">
+      <input id="t2" type="text" placeholder="Ticker 3 (optional)">
+    </div>
+
+    <label>Benchmark Index</label>
+    <input id="index" type="text" placeholder="Index (e.g. ^HSI)">
+
+    <label>Strike Step</label>
+    <input id="strike_step" type="number" step="0.01" min="0.0001" value="0.01">
+
+    <label>Trade Policy</label>
+    <select id="trade_policy">
+      <option value="prefer_spread">prefer_spread</option>
+      <option value="allow_naked">allow_naked</option>
+    </select>
+
+    <div style="margin-top:1rem" class="row">
+      <button id="load" class="btn">Load defaults</button>
+      <button id="save" class="btn primary">Save as defaults</button>
+      <button id="reset" class="btn">Reset form</button>
+      <button id="showjson" class="btn">Show JSON</button>
+      <button id="copyjson" class="btn">Copy JSON</button>
+    </div>
+
+    <div id="status" class="status" style="display:none"></div>
+
+    <h3>JSON Preview</h3>
+    <pre id="preview">Loading...</pre>
+  </div>
+
+  <script>
+    async function fetchConfig() {
+      const r = await fetch('/config');
+      if (!r.ok) {
+        document.getElementById('status').innerText = 'Failed to load config';
+        document.getElementById('status').style.display = 'block';
+        return null;
+      }
+      return await r.json();
+    }
+
+    function formToConfig() {
+      const stocks = [];
+      for (let i=0;i<3;i++){
+        const v = document.getElementById('t'+i).value.trim();
+        if (v) stocks.push(v);
+      }
+      const index = document.getElementById('index').value.trim();
+      const strike_step = parseFloat(document.getElementById('strike_step').value) || 0.01;
+      const trade_policy = document.getElementById('trade_policy').value;
+      return { stocks, index, strike_step, trade_policy };
+    }
+
+    function setFormFromConfig(cfg) {
+      for (let i=0;i<3;i++){
+        document.getElementById('t'+i).value = cfg.stocks && cfg.stocks[i] ? cfg.stocks[i] : '';
+      }
+      document.getElementById('index').value = cfg.index || '';
+      document.getElementById('strike_step').value = cfg.strike_step || 0.01;
+      document.getElementById('trade_policy').value = cfg.trade_policy || 'prefer_spread';
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const cfg = formToConfig();
+      document.getElementById('preview').innerText = JSON.stringify(cfg, null, 2);
+    }
+
+    async function loadDefaults() {
+      const cfg = await fetchConfig();
+      if (cfg) {
+        setFormFromConfig(cfg);
+        document.getElementById('status').innerText = 'Defaults loaded';
+        document.getElementById('status').style.display = 'block';
+        setTimeout(()=>document.getElementById('status').style.display='none',2000);
+      }
+    }
+
+    async function saveDefaults() {
+      const cfg = formToConfig();
+      if (!cfg.index) { alert('Benchmark index is required'); return; }
+      if (cfg.stocks.length === 0) { alert('At least one stock required'); return; }
+      if (cfg.stocks.length > 3) { alert('Maximum 3 stocks allowed'); return; }
+      const r = await fetch('/config', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(cfg)
+      });
+      if (!r.ok) {
+        const txt = await r.text();
+        document.getElementById('status').innerText = 'Save failed: ' + txt;
+        document.getElementById('status').style.display = 'block';
+        return;
+      }
+      document.getElementById('status').innerText = 'Defaults saved';
+      document.getElementById('status').style.display = 'block';
+      setTimeout(()=>document.getElementById('status').style.display='none',2000);
+    }
+
+    document.getElementById('load').addEventListener('click', loadDefaults);
+    document.getElementById('save').addEventListener('click', saveDefaults);
+    document.getElementById('reset').addEventListener('click', ()=>{ setFormFromConfig({stocks:[], index:'', strike_step:0.01, trade_policy:'prefer_spread'}); document.getElementById('status').innerText='Form reset'; document.getElementById('status').style.display='block'; setTimeout(()=>document.getElementById('status').style.display='none',1500); });
+    document.getElementById('showjson').addEventListener('click', ()=>{ updatePreview(); alert(document.getElementById('preview').innerText); });
+    document.getElementById('copyjson').addEventListener('click', async ()=>{
+      updatePreview();
+      try { await navigator.clipboard.writeText(document.getElementById('preview').innerText); alert('Copied to clipboard'); }
+      catch(e){ alert('Clipboard not available'); }
+    });
+
+    for (let i=0;i<3;i++){ document.getElementById('t'+i).addEventListener('input', updatePreview); }
+    document.getElementById('index').addEventListener('input', updatePreview);
+    document.getElementById('strike_step').addEventListener('input', updatePreview);
+    document.getElementById('trade_policy').addEventListener('change', updatePreview);
+
+    // Load on open
+    loadDefaults();
+  </script>
+</body>
+</html>
