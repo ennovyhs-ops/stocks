@@ -4,7 +4,7 @@ This project is a comprehensive tool for analyzing stock and option data to gene
 
 ## Key Features
 
-- **Data Fetching:** Fetches 2 years of historical daily OHLCV (Open, High, Low, Close, Volume) data for up to 3 stocks and 1 benchmark index from Yahoo Finance.
+- **Data Fetching:** Fetches 2 years of historical daily OHLCV (Open, High, Low, Close, Volume) data for up to 3 stocks and 1 benchmark index from Yahoo Finance, to be input by user at interface page.
 - **Technical Analysis:** Computes a wide range of technical indicators, including:
     - VWMA (Volume Weighted Moving Average) (20 and 50-day)
     - Bollinger Bands (20-day with 2 standard deviations)
@@ -17,11 +17,8 @@ This project is a comprehensive tool for analyzing stock and option data to gene
     - 2 Weeks
     - 3 Months
     - 6 Months
-- **Option Strike Recommendations:** Recommends option strike prices using a delta-based Black-Scholes inversion model.
-- **Output Generation:** Saves the analysis results in multiple formats:
-    - CSV files of the raw data
-    - HTML plots of the technical analysis
-    - JSON summary of the scores and strike recommendations
+- **Option Strike Recommendations:** Recommends option strike prices using a delta-based Black-Scholes inversion model for each of the timeframes. Recommendations should be clear and explicit on option play, namely call/put, long or short. If recommendations is dependent on an event or price to be happening, earmark to wait for current price or premium to reach certain levels. 
+- **Output Generation:** Display the analysis results below entered input with plots of the technical analysis, and summary of the scores and strike recommendations.
 
 ## Technologies Used
 
