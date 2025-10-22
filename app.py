@@ -1,14 +1,9 @@
-
 import json
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+import asyncio
+from flask import Flask, render_template, request, redirect, url_for
 from auto_analysis import analyze_stocks
-import os
 
 app = Flask(__name__)
-
-# Ensure the output directory exists
-if not os.path.exists('static/output'):
-    os.makedirs('static/output')
 
 @app.route('/')
 def index():
@@ -25,27 +20,17 @@ def analyze():
     ticker_list = [t.strip() for t in tickers.split(',')]
     
     try:
-        summary = analyze_stocks(ticker_list, benchmark)
+        # Since analyze_stocks is now async, we need to run it in an event loop
+        summary = asyncio.run(analyze_stocks(ticker_list, benchmark))
         # Assuming the first ticker is the one we want to show the plot for
         main_ticker = ticker_list[0]
-        plot_file = summary.get(main_ticker, {}).get('plot')
-        
-        # Read the plotly HTML file content
-        if plot_file and os.path.exists(plot_file):
-            with open(plot_file, 'r') as f:
-                plot_html = f.read()
-        else:
-            plot_html = None
+        plot_html = summary.get(main_ticker, {}).get('plot')
         
         return render_template('results.html', 
                              summary=json.dumps(summary, indent=2, default=float),
                              plot_html=plot_html)
     except Exception as e:
         return render_template('error.html', error=str(e))
-
-@app.route('/static/output/<filename>')
-def output_file(filename):
-    return send_from_directory('static/output', filename)
 
 def create_app():
     # Factory for WSGI servers if needed in future
