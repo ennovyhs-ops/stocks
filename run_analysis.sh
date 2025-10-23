@@ -1,2 +1,5 @@
-#!/bin/sh
-python3 app.py --stocks AAPL GOOG MSFT --benchmark ^GSPC --no-chart
+#!/bin/bash
+cd "$(dirname "$0")"
+export FLASK_APP=app.py
+export FLASK_ENV=production
+python3 app.py

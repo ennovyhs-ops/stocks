@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Analysis Output</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root{
+      --bg:#f7f8fb; --card:#ffffff; --muted:#666; --accent:#0366d6;
+      --good:#0b8a3e; --ok:#f0a500; --bad:#d64545; --neutral:#6c757d;
+      --glass: rgba(0,0,0,0.04);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{background:var(--bg); margin:0; padding:1rem; color:#111}
+    .wrap{max-width:1100px;margin:0 auto}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:1rem}
+    h1{font-size:1.15rem;margin:0}
+    .controls{display:flex;gap:8px;align-items:center}
+    input[type=text]{padding:8px;border:1px solid #ddd;border-radius:6px;min-width:220px}
+    button{padding:8px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer}
+    button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .timestamp{color:var(--muted);font-size:0.9rem}
+    main{display:grid;grid-template-columns:1fr;gap:12px}
+
+    .card{background:var(--card);border-radius:10px;padding:12px;box-shadow:0 1px 0 var(--glass);display:flex;gap:12px;align-items:flex-start}
+    .left{width:260px;flex:0 0 260px}
+    .right{flex:1}
+    .ticker{font-weight:700;font-size:1.05rem}
+    .price{font-size:1.5rem;margin-top:6px}
+    .badge{display:inline-block;padding:6px 8px;border-radius:18px;font-weight:700;color:#fff;font-size:0.85rem}
+    .badge.good{background:var(--good)}
+    .badge.ok{background:var(--ok)}
+    .badge.bad{background:var(--bad)}
+    .badge.neutral{background:var(--neutral)}
+    .chart{width:100%;border-radius:6px;border:1px solid #eee;margin-top:8px}
+
+    table{width:100%;border-collapse:collapse;font-size:0.95rem}
+    th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #f2f2f2}
+    th{background:#fafafa;font-weight:700}
+    .comp-key{width:160px;color:var(--muted)}
+    .comp-val{font-weight:700}
+    .rec{background:#fcfcff;border:1px solid #eef2ff;padding:8px;border-radius:8px;margin-top:8px}
+    .rec .title{font-weight:700;margin-bottom:6px}
+    .rec pre{margin:0;background:transparent;padding:0;font-family:inherit;font-size:0.95rem}
+    @media (max-width:880px){
+      .left{width:140px;flex:0 0 140px}
+      .card{flex-direction:column}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Daily Option Strategy Analyzer Output</h1>
+        <div class="timestamp" id="ts">Not run yet</div>
+      </div>
+      <div class="controls">
+        <input id="tickers" type="text" placeholder="Tickers e.g. 0005.HK, 9988.HK">
+        <input id="index" type="text" placeholder="Benchmark e.g. ^HSI">
+        <button id="run" class="primary">Run Analysis</button>
+        <button id="refresh">Refresh</button>
+        <label style="display:flex;align-items:center;gap:6px;margin-left:8px">
+          <input id="autoref" type="checkbox"> Auto
+        </label>
+      </div>
+    </header>
+
+    <main id="cards">
+      <div style="padding:20px;text-align:center;color:var(--muted)">Run analysis to populate results</div>
+    </main>
+  </div>
+
+  <script>
+    const cardsEl = document.getElementById('cards');
+    const tsEl = document.getElementById('ts');
+    const runBtn = document.getElementById('run');
+    const refBtn = document.getElementById('refresh');
+    const autoCb = document.getElementById('autoref');
+    const tickersInput = document.getElementById('tickers');
+    const indexInput = document.getElementById('index');
+    let autoTimer = null;
+
+    function scoreBadgeClass(score){
+      if(score >= 0.6) return 'badge good';
+      if(score > 0.2) return 'badge ok';
+      if(score <= -0.6) return 'badge bad';
+      return 'badge neutral';
+    }
+
+    function renderComponentRows(comps){
+      let rows = '<table><thead><tr><th class="comp-key">Component</th><th>Value</th></tr></thead><tbody>';
+      for(const k of Object.keys(comps)){
+        const v = Math.round((comps[k] + Number.EPSILON)*1000)/1000;
+        rows += `<tr><td class="comp-key">${k}</td><td class="comp-val">${v}</td></tr>`;
+      }
+      rows += '</tbody></table>';
+      return rows;
+    }
+
+    function renderRecommendation(rec){
+      let s = `<div class="rec"><div class="title">${rec.side.replace(/_/g,' ')}</div>`;
+      s += `<div>Target Delta: <strong>${rec.target_delta}</strong> | ATM: <strong>${rec.strike_atm}</strong> | Target Strike: <strong>${rec.strike_target}</strong></div>`;
+      if(rec.spread_cost !== undefined){
+        s += `<div style="margin-top:6px">Long ${rec.long_strike} Premium <strong>${rec.long_premium}</strong> | Short ${rec.short_strike} Premium <strong>${rec.short_premium}</strong> | Spread cost <strong>${rec.spread_cost}</strong></div>`;
+      } else if(rec.leg_premium !== undefined){
+        s += `<div style="margin-top:6px">Leg Strike ${rec.leg_strike} Premium <strong>${rec.leg_premium}</strong></div>`;
+      }
+      s += `<pre style="margin-top:8px">${JSON.stringify(rec, null, 2)}</pre></div>`;
+      return s;
+    }
+
+    function renderTickerCard(ticker, payload){
+      const latest = payload.latest;
+      const mainTf = Object.keys(payload.summary).includes('6_months') ? '6_months' : Object.keys(payload.summary)[0];
+      const main = payload.summary[mainTf];
+      const score = main.score;
+      const badge = scoreBadgeClass(score);
+      const chart = payload.chart || '';
+      let html = `<div class="card">
+        <div class="left">
+          <div class="ticker">${ticker}</div>
+          <div class="price">${latest}</div>
+          <div style="margin-top:8px"><span class="${badge}">${(score*100).toFixed(0)}%</span></div>
+          <img class="chart" src="${chart}" alt="chart">
+        </div>
+        <div class="right">
+          <div><strong>Summary</strong> Updated: <span style="color:var(--muted)">${new Date().toLocaleString()}</span></div>
+          <div style="margin-top:8px"><strong>Key timeframe</strong> ${mainTf.replace(/_/g,' ')}</div>
+          <div style="margin-top:6px">${renderComponentRows(main.components)}</div>
+          <div style="margin-top:8px">${renderRecommendation(main.recommendation)}</div>
+          <details style="margin-top:8px">
+            <summary>All timeframes</summary>
+            <pre style="margin-top:8px">${JSON.stringify(payload.summary, null, 2)}</pre>
+          </details>
+        </div>
+      </div>`;
+      return html;
+    }
+
+    async function fetchConfigDefaults(){
+      try{
+        const r = await fetch('/config');
+        if(!r.ok) return null;
+        return await r.json();
+      }catch(e){ return null; }
+    }
+
+    async function runAnalysis(tickers, index){
+      const body = { stocks: tickers, index: index };
+      const r = await fetch('/analyze', {method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      if(!r.ok){
+        const txt = await r.text();
+        cardsEl.innerHTML = `<div style="padding:20px;color:#a00">Analysis error: ${txt}</div>`;
+        tsEl.textContent = 'Error';
+        return;
+      }
+      const j = await r.json();
+      tsEl.textContent = new Date(j.timestamp).toLocaleString();
+      const results = j.results || {};
+      if(Object.keys(results).length === 0){
+        cardsEl.innerHTML = '<div style="padding:20px;color:var(--muted)">No results returned</div>';
+        return;
+      }
+      let out = '';
+      for(const t of Object.keys(results)){
+        out += renderTickerCard(t, results[t]);
+      }
+      cardsEl.innerHTML = out;
+    }
+
+    async function doRun(useForm=true){
+      let tickers = [];
+      let index = '';
+      if(useForm){
+        tickers = tickersInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+        index = indexInput.value.trim();
+      }
+      if(tickers.length===0 || !index){
+        const cfg = await fetchConfigDefaults();
+        if(cfg){
+          tickers = tickers.length?tickers:cfg.stocks || [];
+          index = index || cfg.index || '';
+          tickersInput.value = tickers.join(', ');
+          indexInput.value = index;
+        }
+      }
+      if(tickers.length===0 || !index){
+        cardsEl.innerHTML = '<div style="padding:20px;color:#a00">Please provide tickers and index or save defaults in Config UI</div>';
+        return;
+      }
+      cardsEl.innerHTML = '<div style="padding:20px;color:var(--muted)">Running analysis...</div>';
+      await runAnalysis(tickers, index);
+    }
+
+    runBtn.addEventListener('click', ()=> doRun(true));
+    refBtn.addEventListener('click', ()=> doRun(false));
+
+    autoCb.addEventListener('change', ()=>{
+      if(autoCb.checked){
+        autoTimer = setInterval(()=> doRun(false), 60_000);
+      } else {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    });
+
+    (async function init(){
+      const cfg = await fetchConfigDefaults();
+      if(cfg){
+        tickersInput.value = (cfg.stocks || []).join(', ');
+        indexInput.value = cfg.index || '';
+      }
+    })();
+  </script>
+</body>
+</html>

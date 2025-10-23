@@ -1,6 +1,13 @@
 {
-  "stocks": ["0005.HK", "9988.HK"],
+  "stocks": ["0005.HK", "9988.HK", "1810.HK"],
   "index": "^HSI",
   "strike_step": 0.01,
   "trade_policy": "prefer_spread"
+}
+
+{
+  "stocks": ["0005.HK", "9988.HK", "1810.HK"],
+  "index": "^HSI",
+  "strike_step": 0.01,
+  "trade_policy": "allow_naked"
 }

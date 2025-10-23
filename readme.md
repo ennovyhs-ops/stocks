@@ -9,6 +9,11 @@ This project is a compact web app that fetches 3 years of daily OHLCV data for u
 - Provides a simple web interface to enter tickers and view results immediately.
 - Does not store analysis results persistently.
 
+## Overview
+- Small Flask app that fetches 3 years of daily OHLCV via yfinance, computes indicators, scores directional bias across timeframes, and recommends option strikes using delta inversion and Black‑Scholes pricing.
+- Configurable via config.json or the UI.
+
+
 ## Quick start (local)
 Clone the repo: 
 git clone https://github.com/ennovyhs-ops/stocks.git 
@@ -55,6 +60,11 @@ Components
 - VWAP — 20‑day VWAP; measures average price with volume weighting for mean reversion context.
 - RSR — Relative Strength Ratio vs benchmark index (stock close / index close) and its short slope; captures relative strength or weakness.
 
+## Scoring system
+- Components: RSI(14), MACD(12,26,9), VWMA20/50, Bollinger 20±2σ, Volume vs Vol20, VWAP20, RSR vs index and slope.
+- Per-component scoring and weights as implemented in app.py.
+- Composite normalized to [-1,1].
+
 ## Per‑component Scoring Rules
 - RSI: +1.0 if RSI ≤ 30; −1.0 if RSI ≥ 70; linear mapping to 0 at RSI = 50 for in‑between values.
 - MACD: +1.0 for recent bullish MACD cross; −1.0 for bearish cross; otherwise signed normalization of MACD histogram.
@@ -100,6 +110,11 @@ All computations are vectorized with pandas for speed.
 - Round strikes to two decimals using a configurable strike step (default 0.01).
 - Recommendation fields include side (LONG_CALL, BUY_CALL_SPREAD, LONG_PUT, etc.), is_call boolean, target_delta, strike_target, strike_atm, strike_conservative, sigma_used, T_years, and an explicit note such as “Trade now” or “Wait for premium / price trigger”.
 
+## Recommendation policy
+- Two trade policies: prefer_spread (convert naked longs to defined-risk spreads) and allow_naked (allow single-leg directional).
+- Delta targets per timeframe are configurable in app.py.
+- Strike conservative = midpoint(strike_target, ATM) rounded to strike_step.
+
 ## Output Format and UI Behavior
 The web UI accepts up to 3 tickers and one benchmark index.
 
@@ -122,3 +137,25 @@ Adjust component weights to tune sensitivity to any single indicator.
 
 ## Quick Start
 Clone repo, install dependencies, run app and open UI at localhost. Configuration and deploy instructions are in the main README sections.
+
+## Structure Tree
+stocks/
+├── app.py
+├── config.json
+├── README.md
+├── requirements.txt
+├── run_analysis.sh
+├── .gitignore
+├── templates/
+│   ├── config_ui.html
+│   ├── output_ui.html
+│   └── (optional) partials.html
+├── static/
+│   ├── css/
+│   │   └── styles.css
+│   └── js/
+│       └── ui_helpers.js
+├── tests/
+│   └── test_analysis.py
+└── docs/
+    └── architecture.md

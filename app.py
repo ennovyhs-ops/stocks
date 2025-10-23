@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# app.py - Complete server with config API, analysis, config UI route, and output UI route.
+# app.py - Flask app for Daily Option Strategy Analyzer
+# Features: /config GET/POST, /analyze POST, /config-ui, /output-ui, indicator & BS logic, plotting.
 
 import io
 import json
@@ -24,7 +25,7 @@ app = Flask(__name__, template_folder="templates")
 DEFAULT_CONFIG_PATH = "config.json"
 ALLOWED_TRADE_POLICIES = ["prefer_spread", "allow_naked"]
 
-# default runtime config values (can be overridden by config.json)
+# default runtime config values (overridden by config.json)
 STRIKE_STEP = 0.01
 R = 0.02
 Q = 0.0
@@ -35,7 +36,12 @@ TRADE_POLICY = "prefer_spread"
 
 def load_config(path=DEFAULT_CONFIG_PATH):
     if not os.path.exists(path):
-        sample = {"stocks": ["0005.HK"], "index": "^HSI", "strike_step": STRIKE_STEP, "trade_policy": TRADE_POLICY}
+        sample = {
+            "stocks": ["0005.HK"],
+            "index": "^HSI",
+            "strike_step": STRIKE_STEP,
+            "trade_policy": TRADE_POLICY
+        }
         with open(path, "w") as f:
             json.dump(sample, f, indent=2)
         return sample
@@ -303,7 +309,6 @@ def config_ui():
 
 @app.route("/output-ui", methods=["GET"])
 def output_ui():
-    # ensure templates/output_ui.html present in templates directory
     return render_template("output_ui.html")
 
 @app.route("/", methods=["GET"])
