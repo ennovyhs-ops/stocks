@@ -226,7 +226,7 @@ def index():
         <li>POST /analyze (JSON) - body optional: {"stocks":["9988.HK","0005.HK"]}</li>
       </ul>
     </body></html>
-    """")
+    """)
 
 
 if __name__ == "__main__":
