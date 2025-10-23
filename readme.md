@@ -11,24 +11,8 @@ This project is a compact web app that fetches 3 years of daily OHLCV data for u
 
 ## Overview
 - Small Flask app that fetches 3 years of daily OHLCV via yfinance, computes indicators, scores directional bias across timeframes, and recommends option strikes using delta inversion and Black‑Scholes pricing.
-- Configurable via config.json or the UI.
+- Configurable via the UI.
 
-
-## Quick start (local)
-Clone the repo: 
-git clone https://github.com/ennovyhs-ops/stocks.git 
-cd stocks
-
-Create a virtual environment and install: 
-- python3 -m venv venv 
-- source venv/bin/activate 
-- pip install -r requirements.txt
-
-Run: 
-./run_analysis.sh
-
-Open your browser at: 
-http://localhost:5000
 
 ## Usage
 Enter up to 3 stock tickers separated by commas and a benchmark index.
@@ -138,24 +122,10 @@ Adjust component weights to tune sensitivity to any single indicator.
 ## Quick Start
 Clone repo, install dependencies, run app and open UI at localhost. Configuration and deploy instructions are in the main README sections.
 
-## Structure Tree
-stocks/
-├── app.py
-├── config.json
-├── README.md
-├── requirements.txt
-├── run_analysis.sh
-├── .gitignore
-├── templates/
-│   ├── config_ui.html
-│   ├── output_ui.html
-│   └── (optional) partials.html
-├── static/
-│   ├── css/
-│   │   └── styles.css
-│   └── js/
-│       └── ui_helpers.js
-├── tests/
-│   └── test_analysis.py
-└── docs/
-    └── architecture.md
+## References
+- scikit-learn IsotonicRegression documentation (used for ATM smoothing).
+- yfinance project and docs for data retrieval and limitations.
+- Vercel Python functions runtime docs and configuration guidance.
+- SciPy optimization and brentq root-finding documentation (used for SVI and IV routines).
+- DiskCache project and docs for local disk-backed caching in development.
+- redis-py Python client (recommended client and installation notes).
