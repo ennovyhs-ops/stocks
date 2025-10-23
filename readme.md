@@ -19,20 +19,12 @@ Enter up to 3 stock tickers separated by commas and a benchmark index.
 
 Click Analyze to fetch live data and compute results.
 
-The page displays charts and a JSON summary of component scores and recommended option plays.
-
-
-## Security and limits
-The app relies on Yahoo Finance via yfinance; heavy repeated usage may be rate-limited.
-
-The app does not persist credentials or user data.
-
-Option recommendations are algorithmic signals and not financial advice.
+The page displays a summary of component scores and recommended option plays.
 
 
 # Daily Option Strategy Analyzer
 ## Scoring System Overview
-This repository runs a compact web app that fetches 2 years of daily OHLCV data from Yahoo Finance, computes core technical indicators, produces composite directional scores across multiple timeframes, and gives explicit option strike recommendations using delta-based Black‑Scholes inversion. The app returns results on demand via a simple web interface without persistent storage.
+This repository runs a compact web app that fetches 3 years of daily OHLCV data from Yahoo Finance, computes core technical indicators, produces composite directional scores across multiple timeframes, and gives explicit option strike recommendations using delta-based Black‑Scholes inversion. The app returns results on demand via a simple web interface without persistent storage.
 
 ## Scoring System
 Components
@@ -77,7 +69,7 @@ Weights are configurable in the script. The composite score is the weighted sum 
 If a recommendation depends on future price or premium reaching a threshold, the recommendation text explicitly earmarks the trigger condition and advises waiting.
 
 ## Indicator Calculations
-- Use the latest 2 years of daily data per ticker and benchmark.
+- Use the latest 3 years of daily data per ticker and benchmark.
 - VWMA computed as rolling sum(price * volume) / rolling sum(volume).
 - VWAP20 computed from typical price times volume over 20 days divided by sum(volume).
 - Bollinger mid and std use 20‑day window.
@@ -92,7 +84,7 @@ All computations are vectorized with pandas for speed.
 - Use delta targets mapped to timeframe buckets (examples): Next Day 0.50, 2 Weeks 0.55, 3 Months 0.60, 6 Months 0.65 for buyer-side; smaller absolute deltas for seller-side.
 - Convert target delta to strike via numerical inversion of Black‑Scholes call/put delta using historical realized volatility when implied volatility is unavailable.
 - Round strikes to two decimals using a configurable strike step (default 0.01).
-- Recommendation fields include side (LONG_CALL, BUY_CALL_SPREAD, LONG_PUT, etc.), is_call boolean, target_delta, strike_target, strike_atm, strike_conservative, sigma_used, T_years, and an explicit note such as “Trade now” or “Wait for premium / price trigger”.
+- Recommendation fields include side (LONG_CALL, BUY_CALL_SPREAD, LONG_PUT, SHORT_CALL, SHORT_PUT, BUY_PUT_SPREAD, SELL_CALL_SPREAD, SELL_PUT_SPREAD etc.), is_call boolean, target_delta, strike_target, strike_atm, strike_conservative, sigma_used, T_years, and an explicit note such as “Trade now” or “Wait for premium / price trigger”.
 
 ## Recommendation policy
 - Two trade policies: prefer_spread (convert naked longs to defined-risk spreads) and allow_naked (allow single-leg directional).
