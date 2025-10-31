@@ -1,8 +1,8 @@
 ## Daily Option Strategy Analyzer
-This project is a compact web app that fetches 3 years of daily OHLCV data for up to 3 stocks and one benchmark index from Yahoo Finance, computes core technical indicators, scores multiple timeframes, and provides delta-based option strike recommendations. The app returns results on-demand without storing outputs.
+This project is a compact web app that fetches 3 years of daily OHLCV data for a stocks and one benchmark index (optional) from Yahoo Finance or Alpha Vantage, computes core technical indicators, scores multiple timeframes, and provides delta-based option strike recommendations. The app returns results on-demand without storing outputs.
 
 ## Key Features
-- Fetches 3 years of daily data from Yahoo Finance.
+- Fetches 3 years of daily data from Yahoo Finance or Alph Vantage.
 - Computes VWMA(20,50), Bollinger Bands(20,2), RSI(14), MACD(12,26,9), VWAP(20), 20-day average volume.
 - Produces composite scores for Next Day, 2 Weeks, 3 Months, 6 Months.
 - Recommends option strikes (call/put, long/short, conservative ATM reference) using delta inversion.
@@ -15,9 +15,9 @@ This project is a compact web app that fetches 3 years of daily OHLCV data for u
 
 
 ## Usage
-Enter up to 3 stock tickers separated by commas and a benchmark index.
+Enter a stock ticker separated and a benchmark index.
 
-Click Analyze to fetch live data and compute results.
+Click Analyze to fetch latest data and compute results.
 
 The page displays a summary of component scores and recommended option plays.
 
@@ -92,7 +92,7 @@ All computations are vectorized with pandas for speed.
 - Strike conservative = midpoint(strike_target, ATM) rounded to strike_step.
 
 ## Output Format and UI Behavior
-The web UI accepts up to 3 tickers and one benchmark index.
+The web UI accepts ticker and one benchmark index.
 
 The page displays for each ticker:
 - Latest Close price.
